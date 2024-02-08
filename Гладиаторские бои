@@ -1,0 +1,461 @@
+internal class Program
+{
+    private static void Main(string[] args)
+    {
+        Arena arena = new Arena();
+        arena.ShowGame();
+    }
+}
+
+public abstract class Fighter
+{
+    private float _maxHealth;
+
+    public Fighter(string name, float health, int damage)
+    {
+        Name = name;
+        Health = health;
+        _maxHealth = Health;
+        Damage = damage;
+    }
+
+    public string Name { get; private set; }
+    public float Health { get; protected set; }
+    public int Damage { get; private set; }
+
+    public abstract Fighter CreateCopy();
+    public abstract void UseSpecialAbility(Fighter opponent);
+
+    public virtual void ShowStats()
+    {
+        Console.WriteLine($"Боец '{Name}' имеет следующие параметры: {Health} единиц здоровья, {Damage} единиц урона.");
+    }
+
+    public virtual void TakeDamage(int damage)
+    {
+        Health = Math.Max(0, Health - damage);
+    }
+
+    public virtual void Rename(string newName)
+    {
+        Name = newName;
+    }
+
+    public virtual string GetSpecialAbilityDescription()
+    {
+        return "У данного бойца нет способностей";
+    }
+
+    public bool IsAlive()
+    {
+        return Health > 0;
+    }
+
+    public void ShowCurrentHealth()
+    {
+        Console.WriteLine($"У бойца '{Name}' осталось {Health} единиц здоровья.");
+    }
+}
+
+public class Warrior : Fighter
+{
+    private int _attackCounter = 0;
+    private int _numberStrokes = 3;
+    private int _indicatorDoubleDamage = 2;
+
+    public Warrior (string name) : base (name, 900, 80) { }
+
+    public override Fighter CreateCopy()
+    {
+        return new Warrior(Name);
+    }
+
+    public override void UseSpecialAbility(Fighter opponent)
+    {
+        _attackCounter++;
+
+        if(_attackCounter % _numberStrokes == 0)
+        {
+            Console.WriteLine($"Боец {Name} наносит удвоенный урон.");
+            opponent.TakeDamage(Damage * _indicatorDoubleDamage);
+            _attackCounter = 0;
+        }
+        else
+        {
+            opponent.TakeDamage(Damage);
+        }
+    }
+
+    public override void Rename(string newName)
+    {
+        base.Rename(newName);
+    }
+
+    public override string GetSpecialAbilityDescription()
+    {
+        return $"Данный боец при каждом 3 ударе наносит двойной урон в размере {Damage * _indicatorDoubleDamage}.";
+    }
+}
+
+public class Mage : Fighter
+{
+    private int _manaCost = 8;
+    private int _indicatorDoubleDamage = 2;
+
+    public Mage (string name, int mana) : base(name, 800, 70)
+    {
+        Mana = mana;
+    }
+
+    public int Mana { get; private set; }
+
+    public override Fighter CreateCopy()
+    {
+        return new Mage(Name, Mana);
+    }
+
+    public override void Rename(string newName)
+    {
+        base.Rename(newName);
+    }
+
+    public override void UseSpecialAbility(Fighter opponent)
+    {
+        if (Mana >= _manaCost)
+        {
+            int magicDamage = Damage * _indicatorDoubleDamage;
+            opponent.TakeDamage(magicDamage);
+            Mana -= _manaCost;
+
+            Console.WriteLine($"Боец {Name} наносит двойной урон и тратит {_manaCost} ед. маны. Осталось {Mana} ед. маны.");
+        }
+        else
+        {
+            opponent.TakeDamage(Damage);
+        }
+    }
+
+    public override void ShowStats()
+    {
+        base.ShowStats();
+
+        Console.WriteLine($"Дополнительные параметры: {Mana} ед. маны.");
+    }
+
+    public override string GetSpecialAbilityDescription()
+    {
+        return $"Данный боец имеет {Mana} ед. маны. Наносит дополнительно {Damage * 2} ед. урона и тратит 10 ед. маны.";
+    }
+}
+
+public class Barbarian : Fighter
+{
+    private float _healPercent;
+    private float _maxHealth;
+
+    private int _percentConvert = 100;
+
+    public Barbarian (string name, float healPercent = 0.05f) : base(name, 1000, 100)
+    {
+        _healPercent = healPercent;
+        _maxHealth = Health;
+    }
+
+    public override Fighter CreateCopy()
+    {
+        return new Barbarian(Name);
+    }
+
+    public override void Rename(string newName)
+    {
+        base.Rename(newName);
+    }
+
+    public override void UseSpecialAbility(Fighter opponent)
+    {
+        opponent.TakeDamage(Damage);
+
+        float healthToHeal = Health * _healPercent;
+        Health = Math.Min(_maxHealth, Health + healthToHeal);
+        Console.WriteLine($"Боец '{Name}' восстанавливает {healthToHeal} единиц здоровья после получения урона.");
+    }
+
+    public override string GetSpecialAbilityDescription()
+    {
+        return $"Данный боец восстанавливает здоровье при получении урона в размере {_healPercent * _percentConvert}% от здоровья.";
+    }
+}
+
+public class Assassin : Fighter
+{
+    private const float ChanceDodge = 0.3f;
+
+    private int _percentConvert = 100;
+    private int _indicatorDoubleDamage = 2;
+
+    private bool _doubleNextAttack;
+
+    Random random = new Random();
+
+    public Assassin(string name) : base(name, 900, 75) { }
+
+    public override Fighter CreateCopy()
+    {
+        return new Assassin(Name);
+    }
+
+    public override void Rename(string newName)
+    {
+        base.Rename(newName);
+    }
+
+    public override void TakeDamage(int damage)
+    {
+        if (random.NextSingle() < ChanceDodge)
+        {
+            Console.WriteLine($"Боец '{Name}' уклонился от атаки и не получил урона.");
+            _doubleNextAttack = true;
+        }
+        else
+        {
+            base.TakeDamage(damage);
+        }
+    }
+
+    public override void UseSpecialAbility(Fighter opponent)
+    {
+        int damage = Damage;
+
+        if (_doubleNextAttack)
+        {
+            Console.WriteLine($"Боец {Name} наносит удвоенный урон.");
+            damage *= _indicatorDoubleDamage;
+            _doubleNextAttack = false;
+        }
+
+        opponent.TakeDamage(damage);
+    }
+
+    public override string GetSpecialAbilityDescription()
+    {
+        return $"Данный боец имеет возможность нанести двойной урон с {ChanceDodge * _percentConvert}% шансом.";
+    }
+}
+
+public class Knight : Fighter
+{
+    private int _damageDivisionIndicator = 2;
+    private int _halfArmor = 70;
+    private int _damageIncreaseRate = 10;
+    private int _maxArmorDamage = 10;
+
+    public Knight(string name, int armor) : base(name, 1100, 85)
+    {
+        Armor = armor;
+    }
+
+    public int Armor { get; private set; }
+
+    public override Fighter CreateCopy()
+    {
+        return new Knight(Name, Armor);
+    }
+
+    public override void Rename(string newName)
+    {
+        base.Rename(newName);
+    }
+
+    public override void ShowStats()
+    {
+        base.ShowStats();
+
+        Console.WriteLine($"Дополнительные параметры: {Armor} ед. брони.");
+    }
+
+    public override void TakeDamage(int damage)
+    {
+        if (Armor > 0)
+        {
+            int damageReduction = Math.Min(_maxArmorDamage, damage / _damageDivisionIndicator);
+
+            damage -= damageReduction;
+            Armor = Math.Max(Armor - damageReduction, 0);
+        }
+
+        base.TakeDamage(damage);
+    }
+
+    public override void UseSpecialAbility (Fighter opponent)
+    {
+        if (Armor > _halfArmor)
+        {
+            int bonusDamage = Armor / _damageIncreaseRate;
+            opponent.TakeDamage(Damage + bonusDamage);
+
+            Console.WriteLine($"Боец '{Name}' наносит мощный удар! У бойца осталось {Armor} ед. брони.");
+        }
+        else
+        {
+            opponent.TakeDamage(Damage);
+
+            Console.WriteLine($"Боец '{Name}' использует обычный удар, потому что броня слаба.");
+        }
+    }
+
+    public override string GetSpecialAbilityDescription()
+    {
+        return $"Данный боец имеет {Armor} ед. брони и наносит увеличенный урон пока брони больше 50 ед.";
+    }
+}
+
+public class Arena
+{
+    private List<Fighter> _fighters = new List<Fighter>();
+
+    public void ShowGame()
+    {
+        const string CommandSelectFighter = "1";
+        const string CommandFight = "2";
+        const string CommandExit = "3";
+
+        Fighter firstFighter = null;
+        Fighter secondFighter = null;
+
+        string userInput;
+
+        bool isPlaying = true;
+
+        AddFighter();
+
+        while (isPlaying)
+        {
+            Console.WriteLine("Добро пожаловать на гладиаторские бои.");
+            Console.WriteLine($"{CommandSelectFighter} - Выбрать бойца.");
+            Console.WriteLine($"{CommandFight} - Начать бой.");
+            Console.WriteLine($"{CommandExit} - Выйти.");
+            userInput = Console.ReadLine();
+
+            switch (userInput)
+            {
+                case CommandSelectFighter:
+                    SelectFighters(ref firstFighter, ref secondFighter);
+                    break;
+
+                case CommandFight:
+                    BeginFight(firstFighter, secondFighter);
+                    break;
+
+                case CommandExit:
+                    isPlaying = false;
+                    Console.WriteLine("Вы вышли из гладиаторских боев.");
+                    break;
+
+                default:
+                    Console.WriteLine("Неверная команда. Попробуйте снова..");
+                    break;
+            }
+
+            Console.WriteLine("Нажмите любую клавишу чтобы продолжить");
+            Console.ReadKey();
+            Console.Clear();
+        }
+    }
+
+    private void ShowFighters()
+    {
+        for (int i = 0; i < _fighters.Count; i++)
+        {
+            Console.WriteLine($"{i + 1}. {_fighters[i].Name}: {_fighters[i].Health} ед. здоровья, {_fighters[i].Damage} ед. урона. " +
+                $"- {_fighters[i].GetSpecialAbilityDescription()}");
+        }
+    }
+
+    private void AddFighter()
+    {
+        _fighters.Add(new Warrior("Воин"));
+        _fighters.Add(new Mage("Маг", 100));
+        _fighters.Add(new Barbarian("Варвар"));
+        _fighters.Add(new Assassin("Убийца"));
+        _fighters.Add(new Knight("Рыцарь", 100));
+    }
+
+    private void SelectFighters(ref Fighter firstFighter, ref Fighter secondFighter)
+    {
+        int firstIndex;
+        int secondIndex;
+        ShowFighters();
+
+        Console.WriteLine("Введите номер первого бойца: ");
+        firstIndex = Convert.ToInt32(Console.ReadLine()) - 1;
+
+        Console.WriteLine("Введите номер второго бойца: ");
+        secondIndex = Convert.ToInt32(Console.ReadLine()) - 1;
+
+        if (firstIndex == secondIndex)
+        {
+            Console.WriteLine("Так как Вы выбрали одинаковых бойцов, придумайте уникальное имя для второго бойца: ");
+            string uniqueName = Console.ReadLine();
+
+            firstFighter = _fighters[firstIndex].CreateCopy();
+            secondFighter = _fighters[secondIndex].CreateCopy();
+            secondFighter.Rename(uniqueName);
+        }
+        else if (firstIndex >= 0 && firstIndex < _fighters.Count && secondIndex >= 0 && secondIndex < _fighters.Count)
+        {
+            firstFighter = _fighters[firstIndex].CreateCopy();
+            secondFighter = _fighters[secondIndex].CreateCopy();
+        }
+        else
+        {
+            Console.WriteLine("Некорректный ввод.");
+        }
+    }
+
+    private void BeginFight(Fighter firstFighter, Fighter secondFighter)
+    {
+        if (firstFighter != null && secondFighter != null)
+        {
+            Console.WriteLine($"Бой начинается между {firstFighter.Name} и {secondFighter.Name}!");
+
+            firstFighter.ShowStats();
+            secondFighter.ShowStats();
+
+            while (firstFighter.IsAlive() && secondFighter.IsAlive())
+            {
+                firstFighter.UseSpecialAbility(secondFighter);
+                secondFighter.ShowCurrentHealth();
+
+                if (secondFighter.IsAlive() == false)
+                {
+                    break;
+                }
+
+                secondFighter.UseSpecialAbility(firstFighter);
+                firstFighter.ShowCurrentHealth();
+
+                if (firstFighter.IsAlive() == false)
+                {
+                    break;
+                }
+            }
+
+            if (firstFighter.IsAlive() == false && secondFighter.IsAlive() == false)
+            {
+                Console.WriteLine("Оба бойца пали в бою!");
+            }
+            else if (firstFighter.IsAlive())
+            {
+                Console.WriteLine($"Победил боец - {firstFighter.Name}!");
+            }
+            else
+            {
+                Console.WriteLine($"Победил боец - {secondFighter.Name}!");
+            }
+        }
+        else
+        {
+            Console.WriteLine("Выберите бойцов.");
+        }
+    }
+}

@@ -195,7 +195,7 @@ public class Assassin : Fighter
 
     private bool _doubleNextAttack;
 
-    Random random = new Random();
+    private Random _random = new Random();
 
     public Assassin(string name) : base(name, 900, 75) { }
 
@@ -211,7 +211,7 @@ public class Assassin : Fighter
 
     public override void TakeDamage(int damage)
     {
-        if (random.NextSingle() < ChanceDodge)
+        if (_random.NextSingle() < ChanceDodge)
         {
             Console.WriteLine($"Боец '{Name}' уклонился от атаки и не получил урона.");
             _doubleNextAttack = true;
@@ -339,11 +339,11 @@ public class Arena
             switch (userInput)
             {
                 case CommandSelectFighter:
-                    SelectFighters(ref firstFighter, ref secondFighter);
+                    (firstFighter, secondFighter) = SelectFighters();
                     break;
 
                 case CommandFight:
-                    BeginFight(firstFighter, secondFighter);
+                    Fight(firstFighter, secondFighter);
                     break;
 
                 case CommandExit:
@@ -380,39 +380,48 @@ public class Arena
         _fighters.Add(new Knight("Рыцарь", 100));
     }
 
-    private void SelectFighters(ref Fighter firstFighter, ref Fighter secondFighter)
+    private (Fighter, Fighter) SelectFighters()
     {
         int firstIndex;
         int secondIndex;
+
+        bool isNumberFirst;
+        bool isNumberSecond;
+
         ShowFighters();
 
         Console.WriteLine("Введите номер первого бойца: ");
-        firstIndex = Convert.ToInt32(Console.ReadLine()) - 1;
+        isNumberFirst = int.TryParse(Console.ReadLine(), out firstIndex);
 
         Console.WriteLine("Введите номер второго бойца: ");
-        secondIndex = Convert.ToInt32(Console.ReadLine()) - 1;
+        isNumberSecond = int.TryParse(Console.ReadLine(), out secondIndex);
 
-        if (firstIndex == secondIndex)
+        if (firstIndex > 0 && firstIndex <= _fighters.Count && secondIndex > 0 && secondIndex <= _fighters.Count)
         {
-            Console.WriteLine("Так как Вы выбрали одинаковых бойцов, придумайте уникальное имя для второго бойца: ");
-            string uniqueName = Console.ReadLine();
+            firstIndex--;
+            secondIndex--;
 
-            firstFighter = _fighters[firstIndex].CreateCopy();
-            secondFighter = _fighters[secondIndex].CreateCopy();
-            secondFighter.Rename(uniqueName);
-        }
-        else if (firstIndex >= 0 && firstIndex < _fighters.Count && secondIndex >= 0 && secondIndex < _fighters.Count)
-        {
-            firstFighter = _fighters[firstIndex].CreateCopy();
-            secondFighter = _fighters[secondIndex].CreateCopy();
+            Fighter firstFighter = _fighters[firstIndex].CreateCopy();
+            Fighter secondFighter = _fighters[secondIndex].CreateCopy();
+
+            if(firstIndex == secondIndex)
+            {
+                Console.WriteLine("Так как Вы выбрали одинаковых бойцов, придумайте уникальное имя для второго бойца: ");
+                string uniqueName = Console.ReadLine();
+                secondFighter.Rename(uniqueName);
+            }
+
+            return (firstFighter, secondFighter);
         }
         else
         {
             Console.WriteLine("Некорректный ввод.");
+
+            return (null, null);
         }
     }
 
-    private void BeginFight(Fighter firstFighter, Fighter secondFighter)
+    private void Fight(Fighter firstFighter, Fighter secondFighter)
     {
         if (firstFighter != null && secondFighter != null)
         {
@@ -455,7 +464,7 @@ public class Arena
         }
         else
         {
-            Console.WriteLine("Выберите бойцов.");
+            Console.WriteLine("Сначала выберите бойцов.");
         }
     }
 }
